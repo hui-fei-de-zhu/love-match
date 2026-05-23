@@ -6,3 +6,6 @@ desktop.ini
 .claude/
 .env
 .DS_Store
+
+# Local Netlify folder
+.netlify
