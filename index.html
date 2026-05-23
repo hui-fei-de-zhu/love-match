@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
+<title>心动配对</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --pink: #ff6b9d;
+    --pink-light: #ffa5c3;
+    --pink-bg: #fff0f5;
+    --white: #ffffff;
+    --text: #3d2c3a;
+    --text-light: #8e7a8a;
+    --shadow: 0 4px 20px rgba(255, 107, 157, 0.15);
+    --radius: 20px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #ffd1e0 0%, #ffe0ec 30%, #fff0f5 60%, #ffd1e0 100%);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* 浮动爱心背景 */
+  .hearts-bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .hearts-bg span {
+    position: absolute;
+    font-size: 20px;
+    animation: floatUp linear infinite;
+    opacity: 0.3;
+  }
+
+  @keyframes floatUp {
+    0%   { transform: translateY(110vh) rotate(0deg) scale(0.5); opacity: 0; }
+    10%  { opacity: 0.35; }
+    90%  { opacity: 0.35; }
+    100% { transform: translateY(-10vh) rotate(360deg) scale(1.2); opacity: 0; }
+  }
+
+  /* 主容器 */
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 420px;
+    margin: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* 卡片 */
+  .card {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.6);
+  }
+
+  /* 标题区 */
+  .header {
+    text-align: center;
+    padding-top: 8px;
+  }
+
+  .logo {
+    font-size: 56px;
+    display: block;
+    animation: heartbeat 1.2s ease-in-out infinite;
+  }
+
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    14%  { transform: scale(1.15); }
+    28%  { transform: scale(1); }
+    42%  { transform: scale(1.15); }
+    56%  { transform: scale(1); }
+  }
+
+  .title {
+    font-size: 26px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ff6b9d, #e91e63);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-top: 2px;
+  }
+
+  .subtitle {
+    color: var(--text-light);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  /* 按钮 */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 16px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    text-align: center;
+    -webkit-appearance: none;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ff6b9d, #e91e63);
+    color: #fff;
+    box-shadow: 0 6px 24px rgba(233, 30, 99, 0.3);
+  }
+
+  .btn-outline {
+    background: var(--white);
+    color: #e91e63;
+    border: 2px solid #ff6b9d;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-light);
+    font-size: 14px;
+    padding: 10px;
+    font-weight: 500;
+  }
+
+  .btn-danger {
+    background: #fff;
+    color: #e74c3c;
+    border: 1.5px solid #e74c3c;
+    font-size: 13px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    width: auto;
+    margin: 0 auto;
+  }
+
+  .btn-small {
+    width: auto;
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 15px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ff6b9d, #e91e63);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+  }
+  .btn-row .btn { flex: 1; }
+
+  /* 表单 */
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #f0dce4;
+    border-radius: 14px;
+    font-size: 16px;
+    background: #fff;
+    color: var(--text);
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+    outline: none;
+  }
+
+  .form-input:focus {
+    border-color: var(--pink);
+  }
+
+  .form-input::placeholder { color: #d0bcc8; }
+
+  .form-hint {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 4px;
+  }
+
+  .form-error {
+    font-size: 12px;
+    color: #e74c3c;
+    margin-top: 4px;
+    display: none;
+  }
+
+  .form-error.show { display: block; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-120px);
+    background: #3d2c3a;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 999;
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* 结果卡片 */
+  .result-icon {
+    font-size: 72px;
+    text-align: center;
+    display: block;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    80% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .result-title {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 800;
+    margin: 8px 0 6px;
+  }
+
+  .result-desc {
+    text-align: center;
+    color: var(--text-light);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .match-names {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 16px 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .match-names .heart { color: #e91e63; font-size: 28px; animation: heartbeat 1s ease-in-out infinite; }
+
+  .match-names .name {
+    background: linear-gradient(135deg, #ff6b9d, #e91e63);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* 撒花画布 */
+  #confetti-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 998;
+  }
+
+  /* 隐藏屏幕 */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* 查询列表 */
+  .query-list {
+    list-style: none;
+  }
+
+  .query-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    border: 1px solid #f0dce4;
+  }
+
+  .query-item .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd1e0, #ff6b9d);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .query-item .info { flex: 1; }
+  .query-item .info .name { font-weight: 700; color: var(--text); font-size: 16px; }
+  .query-item .info .time { font-size: 12px; color: var(--text-light); }
+
+  .empty-state {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--text-light);
+  }
+  .empty-state .icon { font-size: 48px; display: block; margin-bottom: 12px; }
+  .empty-state .text { font-size: 14px; }
+
+  /* 提示卡片 */
+  .tip-card {
+    background: linear-gradient(135deg, #fff0f5, #ffe0ec);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #8e6a7a;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .tip-card .icon { font-size: 18px; }
+</style>
+</head>
+<body>
+
+<!-- 浮动爱心 -->
+<div class="hearts-bg" id="heartsBg"></div>
+
+<!-- 撒花画布 -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- 主应用 -->
+<div class="app" id="app">
+
+  <!-- 首页 -->
+  <div class="screen active" id="screen-home">
+    <div class="card header">
+      <span class="logo">💘</span>
+      <h1 class="title">心动配对</h1>
+      <p class="subtitle">秘密登记，双向奔赴才能揭晓答案</p>
+    </div>
+
+    <div class="card">
+      <div class="btn-row" style="flex-direction:column;">
+        <button class="btn btn-primary" onclick="showScreen('register')">💌 我要登记</button>
+        <button class="btn btn-outline" onclick="showScreen('query')">🔍 查询配对状态</button>
+      </div>
+      <div class="tip-card" style="margin-top:16px;">
+        <span class="icon">💡</span> 只有你和Ta互相登记了对方，才能配对成功哦
+      </div>
+    </div>
+  </div>
+
+  <!-- 登记页 -->
+  <div class="screen" id="screen-register">
+    <div class="card">
+      <h2 style="text-align:center;color:var(--text);font-size:20px;margin-bottom:20px;">💌 秘密登记</h2>
+
+      <div class="form-group">
+        <label class="form-label">你的名字</label>
+        <input class="form-input" id="regYourName" placeholder="请输入你的名字" maxlength="20" autocomplete="off">
+        <div class="form-error" id="errYourName">请输入你的名字</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">你喜欢的人的名字</label>
+        <input class="form-input" id="regCrushName" placeholder="请输入Ta的名字" maxlength="20" autocomplete="off">
+        <div class="form-error" id="errCrushName">请输入Ta的名字</div>
+      </div>
+
+      <button class="btn btn-primary" onclick="submitRegistration()">✨ 确认登记</button>
+      <button class="btn btn-ghost" style="margin-top:8px;" onclick="showScreen('home')">← 返回首页</button>
+    </div>
+  </div>
+
+  <!-- 配对成功页 -->
+  <div class="screen" id="screen-matched">
+    <div class="card" style="text-align:center;">
+      <span class="result-icon">🎉</span>
+      <h2 class="result-title" style="color:#e91e63;">配对成功！</h2>
+      <div class="match-names">
+        <span class="name" id="matchedName1"></span>
+        <span class="heart">♥</span>
+        <span class="name" id="matchedName2"></span>
+      </div>
+      <p class="result-desc">你们互相喜欢着对方！<br>这就是最美好的双向奔赴 💕</p>
+      <button class="btn btn-primary" style="margin-top:20px;" onclick="showScreen('home')">🏠 返回首页</button>
+    </div>
+  </div>
+
+  <!-- 登记成功（未配对）页 -->
+  <div class="screen" id="screen-registered">
+    <div class="card" style="text-align:center;">
+      <span class="result-icon">✉️</span>
+      <h2 class="result-title">登记成功</h2>
+      <div class="match-names">
+        <span class="name" id="regResultYour"></span>
+        <span style="font-size:20px;">➡️</span>
+        <span class="name" id="regResultCrush"></span>
+      </div>
+      <p class="result-desc">
+        我们已经记下了你的心意。<br>
+        如果 <strong id="regResultCrushStrong"></strong> 也登记了你，<br>
+        你们就会配对成功！<br><br>
+        快把这个页面分享给Ta吧～
+      </p>
+      <button class="btn btn-outline" style="margin-top:12px;" onclick="sharePage()">📋 复制链接分享给Ta</button>
+      <button class="btn btn-primary" style="margin-top:8px;" onclick="showScreen('home')">🏠 返回首页</button>
+    </div>
+  </div>
+
+  <!-- 查询页 -->
+  <div class="screen" id="screen-query">
+    <div class="card">
+      <h2 style="text-align:center;color:var(--text);font-size:20px;margin-bottom:20px;">🔍 查询配对状态</h2>
+
+      <div class="form-group">
+        <label class="form-label">输入你的名字</label>
+        <input class="form-input" id="queryName" placeholder="请输入你的名字" maxlength="20" autocomplete="off">
+        <div class="form-error" id="errQueryName">请输入你的名字</div>
+      </div>
+
+      <button class="btn btn-primary" onclick="checkStatus()">查询</button>
+      <button class="btn btn-ghost" style="margin-top:8px;" onclick="showScreen('home')">← 返回首页</button>
+    </div>
+
+    <!-- 查询结果区 -->
+    <div class="card" id="queryResultCard" style="display:none;">
+      <h3 style="font-size:16px;color:var(--text);margin-bottom:12px;" id="queryResultTitle"></h3>
+      <ul class="query-list" id="queryResultList"></ul>
+      <div class="empty-state" id="queryEmpty" style="display:none;">
+        <span class="icon">💭</span>
+        <p class="text">还没有人登记喜欢你<br>或者你们已经配对成功啦</p>
+      </div>
+      <div id="queryMatchedSection" style="display:none;text-align:center;margin-top:16px;">
+        <div style="font-size:40px;margin-bottom:8px;">💕</div>
+        <p style="color:#e91e63;font-weight:700;font-size:16px;">你们已经配对成功！</p>
+      </div>
+    </div>
+
+    <!-- 数据管理（页脚小字） -->
+    <div style="text-align:center;margin-top:4px;">
+      <button class="btn btn-danger" onclick="resetAll()" style="font-size:12px;padding:8px 16px;">🗑 清除所有数据</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============ API 层 ============
+var API_BASE = '/api';
+
+function apiPost(path, body) {
+  return fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); });
+}
+
+function apiGet(path) {
+  return fetch(API_BASE + path).then(function(r) { return r.json(); });
+}
+
+function apiDelete(path) {
+  return fetch(API_BASE + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+}
+
+// ============ UI 层 ============
+function showScreen(name) {
+  var screens = document.querySelectorAll('.screen');
+  for (var i = 0; i < screens.length; i++) { screens[i].classList.remove('active'); }
+  var target = document.getElementById('screen-' + name);
+  if (target) target.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(function(){ t.classList.remove('show'); }, 2000);
+}
+
+// ============ 登记逻辑 ============
+function submitRegistration() {
+  var yourName = document.getElementById('regYourName').value.trim();
+  var crushName = document.getElementById('regCrushName').value.trim();
+  var valid = true;
+
+  var err1 = document.getElementById('errYourName');
+  var err2 = document.getElementById('errCrushName');
+  err1.classList.remove('show');
+  err2.classList.remove('show');
+
+  if (!yourName) {
+    err1.textContent = '请输入你的名字';
+    err1.classList.add('show');
+    valid = false;
+  }
+  if (!crushName) {
+    err2.textContent = '请输入Ta的名字';
+    err2.classList.add('show');
+    valid = false;
+  }
+  if (yourName && crushName && yourName === crushName) {
+    err2.textContent = '不能和自己配对哦';
+    err2.classList.add('show');
+    valid = false;
+  }
+  if (!valid) return;
+
+  var btn = document.querySelector('#screen-register .btn-primary');
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+
+  apiPost('/register', { yourName: yourName, crushName: crushName }).then(function(data) {
+    btn.disabled = false;
+    btn.textContent = '✨ 确认登记';
+
+    if (!data.ok) {
+      showToast(data.msg || '提交失败');
+      return;
+    }
+
+    if (data.matched) {
+      document.getElementById('matchedName1').textContent = yourName;
+      document.getElementById('matchedName2').textContent = crushName;
+      showScreen('matched');
+      launchConfetti();
+    } else {
+      document.getElementById('regResultYour').textContent = yourName;
+      document.getElementById('regResultCrush').textContent = crushName;
+      document.getElementById('regResultCrushStrong').textContent = crushName;
+      showScreen('registered');
+    }
+
+    document.getElementById('regYourName').value = '';
+    document.getElementById('regCrushName').value = '';
+  }).catch(function() {
+    btn.disabled = false;
+    btn.textContent = '✨ 确认登记';
+    showToast('网络错误，请重试');
+  });
+}
+
+// ============ 查询逻辑 ============
+function checkStatus() {
+  var myName = document.getElementById('queryName').value.trim();
+  var err = document.getElementById('errQueryName');
+  err.classList.remove('show');
+
+  if (!myName) {
+    err.textContent = '请输入你的名字';
+    err.classList.add('show');
+    return;
+  }
+
+  var resultCard = document.getElementById('queryResultCard');
+  var resultTitle = document.getElementById('queryResultTitle');
+  var resultList = document.getElementById('queryResultList');
+  var emptyState = document.getElementById('queryEmpty');
+  var matchedSection = document.getElementById('queryMatchedSection');
+
+  resultCard.style.display = 'block';
+  resultList.innerHTML = '';
+  emptyState.style.display = 'none';
+  matchedSection.style.display = 'none';
+  resultTitle.textContent = '查询中...';
+
+  apiGet('/check?name=' + encodeURIComponent(myName)).then(function(data) {
+    if (!data.ok) {
+      showToast(data.msg || '查询失败');
+      return;
+    }
+
+    resultTitle.textContent = myName + ' 的配对状态';
+
+    if (data.mutualMatch) {
+      matchedSection.style.display = 'block';
+      matchedSection.querySelector('p').textContent =
+        '你和 ' + data.mutualMatch.name2 + ' 已经配对成功！';
+    }
+
+    if (data.whoLikesMe.length === 0 && !data.mutualMatch) {
+      emptyState.style.display = 'block';
+    } else {
+      data.whoLikesMe.forEach(function(r) {
+        var li = document.createElement('li');
+        li.className = 'query-item';
+        var isMutual = data.myCrush && data.myCrush.crushName === r.yourName;
+        li.innerHTML =
+          '<div class="avatar">' + (isMutual ? '💕' : '❤️') + '</div>' +
+          '<div class="info">' +
+            '<div class="name">' + escHtml(r.yourName) + ' ' + (isMutual ? '← 互相喜欢！' : '偷偷喜欢你') + '</div>' +
+            '<div class="time">' + formatTime(r.time) + '</div>' +
+          '</div>';
+        resultList.appendChild(li);
+      });
+    }
+  }).catch(function() {
+    showToast('网络错误，请重试');
+    resultCard.style.display = 'none';
+  });
+}
+
+// ============ 辅助函数 ============
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function formatTime(ts) {
+  var d = new Date(ts);
+  function pad(n) { return String(n).padStart(2, '0'); }
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+function sharePage() {
+  var url = window.location.href;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function() {
+      showToast('链接已复制，快去发给Ta吧！');
+    }).catch(function() { showToast('复制失败，请手动分享'); });
+  } else {
+    showToast('请手动复制链接分享给Ta');
+  }
+}
+
+function resetAll() {
+  if (confirm('确定要清除所有配对数据吗？此操作不可恢复！')) {
+    apiDelete('/reset').then(function(data) {
+      if (data.ok) {
+        showToast('所有数据已清除');
+        document.getElementById('queryResultCard').style.display = 'none';
+        document.getElementById('queryName').value = '';
+      }
+    }).catch(function() {
+      showToast('清除失败，请重试');
+    });
+  }
+}
+
+// ============ 撒花特效 ============
+function launchConfetti() {
+  var canvas = document.getElementById('confetti-canvas');
+  var ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  var colors = ['#ff6b9d','#e91e63','#ffd1e0','#ffa5c3','#ff4081','#f48fb1','#ff80ab','#fff'];
+  var particles = [];
+
+  for (var i = 0; i < 120; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      w: Math.random() * 10 + 4,
+      h: Math.random() * 6 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vx: (Math.random() - 0.5) * 3,
+      vy: Math.random() * 3 + 2,
+      rotation: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 10,
+      opacity: 1
+    });
+  }
+
+  var frame = 0;
+  var maxFrames = 200;
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frame++;
+
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.02;
+      p.rotation += p.rotSpeed;
+      p.opacity = Math.max(0, 1 - frame / maxFrames);
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation * Math.PI / 180);
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    }
+
+    if (frame < maxFrames) {
+      requestAnimationFrame(draw);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  draw();
+}
+
+// ============ 背景爱心 ============
+(function() {
+  var container = document.getElementById('heartsBg');
+  var emojis = ['💕','💗','💖','💝','💘','💓','♥','🩷'];
+  for (var i = 0; i < 18; i++) {
+    var span = document.createElement('span');
+    span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    span.style.left = Math.random() * 100 + '%';
+    span.style.fontSize = (Math.random() * 16 + 12) + 'px';
+    span.style.animationDuration = (Math.random() * 8 + 10) + 's';
+    span.style.animationDelay = (Math.random() * 8) + 's';
+    container.appendChild(span);
+  }
+})();
+
+window.addEventListener('resize', function() {
+  var canvas = document.getElementById('confetti-canvas');
+  if (canvas) {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+});
+</script>
+
+</body>
+</html>

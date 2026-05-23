@@ -1,0 +1,12 @@
+{
+  "name": "love-match",
+  "version": "1.0.0",
+  "description": "心动配对 - 恋爱配对小程序",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
