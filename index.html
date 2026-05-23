@@ -182,6 +182,18 @@ body {
 (function(){
 'use strict';
 
+// 检测 file:// 协议
+if (window.location.protocol === 'file:') {
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:20px;">' +
+    '<div style="background:#fff;border-radius:20px;padding:28px 24px;text-align:center;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,0.1);">' +
+    '<span style="font-size:48px;">⚠️</span>' +
+    '<h3 style="margin:12px 0;color:#e74c3c;">请通过服务器访问</h3>' +
+    '<p style="font-size:14px;color:#666;line-height:1.6;">不要直接双击HTML文件！<br>请双击 <strong>start.bat</strong> 启动服务器，<br>浏览器会自动打开正确的地址。</p>' +
+    '<p style="font-size:12px;color:#999;margin-top:8px;">启动后地址: <strong>http://localhost:3457</strong></p>' +
+    '</div></div>';
+  throw new Error('Please use start.bat');
+}
+
 // ============ 编码 / 解码 ============
 // URL参数格式: ?n=我的名字&c=喜欢的人的名字&t=时间戳
 function makeShareUrl(myName, crushName) {
