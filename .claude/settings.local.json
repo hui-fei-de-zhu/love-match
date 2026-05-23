@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git --version)",
+      "Bash(git config *)",
+      "Bash(curl -s -u \"2709560086@qq.com:zyj892359\" -H \"Accept: application/vnd.github+json\" https://api.github.com/user/repos -d '{\"name\":\"love-match\",\"description\":\"心动配对 - 恋爱配对小程序\",\"private\":false,\"has_pages\":true}')",
+      "Bash(curl *)",
+      "Bash(where gh *)",
+      "Bash(winget list *)",
+      "Bash(npm list *)",
+      "Bash(winget install *)",
+      "Bash(npx localtunnel *)",
+      "Bash(gh --version)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node server.js)",
+      "Bash(netstat -ano)",
+      "Bash(jobs -l)",
+      "Bash(cd /tmp)",
+      "Bash(unzip -o gh.zip -d gh_install)",
+      "Bash(cmdkey /list)",
+      "Bash(npm search *)",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx bore-cli *)",
+      "Bash(ssh -V)",
+      "Bash(npx cloudflared *)",
+      "Bash(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -R 80:localhost:3457 serveo.net)",
+      "Bash(npx expose *)",
+      "Bash(npx bore *)",
+      "Bash(echo 'echo \"zyj892359\"')",
+      "Bash(chmod +x /tmp/git-askpass.sh)",
+      "Bash(GIT_ASKPASS=/tmp/git-askpass.sh GIT_TERMINAL_PROMPT=0 git ls-remote https://2709560086@github.com/2709560086/love-match.git)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(git fetch *)",
+      "Bash(git stash *)",
+      "Bash(git pull *)",
+      "Bash(git checkout *)"
+    ]
+  }
+}

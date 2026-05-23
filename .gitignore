@@ -1,5 +1,4 @@
 node_modules/
-data.json
-server.log
-tunnel.log
-*.log
+data/
+.env
+.DS_Store
