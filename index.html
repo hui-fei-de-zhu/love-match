@@ -488,9 +488,31 @@
 
 </div>
 
+<!-- 协议错误提示 -->
+<div id="protocol-error" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;margin:20px;text-align:center;max-width:360px;">
+    <span style="font-size:48px;">⚠️</span>
+    <h3 style="margin:12px 0;color:#e74c3c;">请通过服务器访问</h3>
+    <p style="font-size:14px;color:#666;line-height:1.6;">不要直接双击打开HTML文件！<br>请先运行 <strong>start.bat</strong> 启动服务器，<br>然后在浏览器访问：</p>
+    <p style="font-size:16px;font-weight:700;color:#e91e63;margin:8px 0;word-break:break-all;">http://localhost:3457</p>
+  </div>
+</div>
+
 <script>
-// ============ API 层 ============
+// 检测是否通过服务器访问
+if (window.location.protocol === 'file:') {
+  document.getElementById('protocol-error').style.display = 'flex';
+}
+
+// ============ 存储层（API 优先 + localStorage 降级） ============
 var API_BASE = '/api';
+var LS_KEY = 'lovematch_local';
+
+function getLocalRecords() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function saveLocalRecords(records) { localStorage.setItem(LS_KEY, JSON.stringify(records)); }
 
 function apiPost(path, body) {
   return fetch(API_BASE + path, {
@@ -506,6 +528,41 @@ function apiGet(path) {
 
 function apiDelete(path) {
   return fetch(API_BASE + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+}
+
+// 本地配对检测
+function localFindMatch(yourName, crushName) {
+  var records = getLocalRecords();
+  for (var i = 0; i < records.length; i++) {
+    if (records[i].yourName === crushName && records[i].crushName === yourName) {
+      return { found: true, record: records[i], index: i };
+    }
+  }
+  return { found: false };
+}
+
+function localRegister(yourName, crushName) {
+  var records = getLocalRecords();
+  for (var i = 0; i < records.length; i++) {
+    if (records[i].yourName === yourName) {
+      records[i] = { yourName: yourName, crushName: crushName, time: Date.now() };
+      saveLocalRecords(records);
+      return;
+    }
+  }
+  records.push({ yourName: yourName, crushName: crushName, time: Date.now() });
+  saveLocalRecords(records);
+}
+
+function localCheck(myName) {
+  var records = getLocalRecords();
+  var whoLikesMe = [];
+  var myCrush = null;
+  for (var i = 0; i < records.length; i++) {
+    if (records[i].crushName === myName) whoLikesMe.push(records[i]);
+    if (records[i].yourName === myName) myCrush = records[i];
+  }
+  return { whoLikesMe: whoLikesMe, myCrush: myCrush };
 }
 
 // ============ UI 层 ============
@@ -525,7 +582,58 @@ function showToast(msg) {
   t._t = setTimeout(function(){ t.classList.remove('show'); }, 2000);
 }
 
-// ============ 登记逻辑 ============
+// ============ 登记逻辑（API 优先 + localStorage 降级） ============
+function doRegister(yourName, crushName) {
+  // 先检查本地匹配
+  var localMatch = localFindMatch(yourName, crushName);
+
+  if (localMatch.found) {
+    // 本地配对成功
+    var records = getLocalRecords();
+    records.splice(localMatch.index, 1);
+    records = records.filter(function(r) { return r.yourName !== yourName; });
+    saveLocalRecords(records);
+    document.getElementById('matchedName1').textContent = yourName;
+    document.getElementById('matchedName2').textContent = crushName;
+    showScreen('matched');
+    launchConfetti();
+    return;
+  }
+
+  // 尝试API
+  apiPost('/register', { yourName: yourName, crushName: crushName }).then(function(data) {
+    if (data.ok && data.matched) {
+      // 服务器配对成功，同步清理本地
+      var records = getLocalRecords().filter(function(r) { return r.yourName !== yourName && r.yourName !== crushName; });
+      saveLocalRecords(records);
+      document.getElementById('matchedName1').textContent = yourName;
+      document.getElementById('matchedName2').textContent = crushName;
+      showScreen('matched');
+      launchConfetti();
+    } else if (data.ok && !data.matched) {
+      localRegister(yourName, crushName);
+      showRegistered(yourName, crushName);
+    } else {
+      // API失败，仅本地存储
+      localRegister(yourName, crushName);
+      showRegistered(yourName, crushName);
+      showToast('服务器暂不可用，已保存到本地');
+    }
+  }).catch(function() {
+    // 网络错误，使用本地存储
+    localRegister(yourName, crushName);
+    showRegistered(yourName, crushName);
+    showToast('离线模式，数据已保存到本地');
+  });
+}
+
+function showRegistered(yourName, crushName) {
+  document.getElementById('regResultYour').textContent = yourName;
+  document.getElementById('regResultCrush').textContent = crushName;
+  document.getElementById('regResultCrushStrong').textContent = crushName;
+  showScreen('registered');
+}
+
 function submitRegistration() {
   var yourName = document.getElementById('regYourName').value.trim();
   var crushName = document.getElementById('regCrushName').value.trim();
@@ -536,69 +644,23 @@ function submitRegistration() {
   err1.classList.remove('show');
   err2.classList.remove('show');
 
-  if (!yourName) {
-    err1.textContent = '请输入你的名字';
-    err1.classList.add('show');
-    valid = false;
-  }
-  if (!crushName) {
-    err2.textContent = '请输入Ta的名字';
-    err2.classList.add('show');
-    valid = false;
-  }
-  if (yourName && crushName && yourName === crushName) {
-    err2.textContent = '不能和自己配对哦';
-    err2.classList.add('show');
-    valid = false;
-  }
+  if (!yourName) { err1.textContent = '请输入你的名字'; err1.classList.add('show'); valid = false; }
+  if (!crushName) { err2.textContent = '请输入Ta的名字'; err2.classList.add('show'); valid = false; }
+  if (yourName && crushName && yourName === crushName) { err2.textContent = '不能和自己配对哦'; err2.classList.add('show'); valid = false; }
   if (!valid) return;
 
   var btn = document.querySelector('#screen-register .btn-primary');
-  btn.disabled = true;
-  btn.textContent = '提交中...';
+  btn.disabled = true; btn.textContent = '提交中...';
 
-  apiPost('/register', { yourName: yourName, crushName: crushName }).then(function(data) {
-    btn.disabled = false;
-    btn.textContent = '✨ 确认登记';
+  doRegister(yourName, crushName);
 
-    if (!data.ok) {
-      showToast(data.msg || '提交失败');
-      return;
-    }
-
-    if (data.matched) {
-      document.getElementById('matchedName1').textContent = yourName;
-      document.getElementById('matchedName2').textContent = crushName;
-      showScreen('matched');
-      launchConfetti();
-    } else {
-      document.getElementById('regResultYour').textContent = yourName;
-      document.getElementById('regResultCrush').textContent = crushName;
-      document.getElementById('regResultCrushStrong').textContent = crushName;
-      showScreen('registered');
-    }
-
-    document.getElementById('regYourName').value = '';
-    document.getElementById('regCrushName').value = '';
-  }).catch(function() {
-    btn.disabled = false;
-    btn.textContent = '✨ 确认登记';
-    showToast('网络错误，请重试');
-  });
+  btn.disabled = false; btn.textContent = '✨ 确认登记';
+  document.getElementById('regYourName').value = '';
+  document.getElementById('regCrushName').value = '';
 }
 
-// ============ 查询逻辑 ============
-function checkStatus() {
-  var myName = document.getElementById('queryName').value.trim();
-  var err = document.getElementById('errQueryName');
-  err.classList.remove('show');
-
-  if (!myName) {
-    err.textContent = '请输入你的名字';
-    err.classList.add('show');
-    return;
-  }
-
+// ============ 查询逻辑（API 优先 + localStorage 降级） ============
+function renderCheckResult(myName, whoLikesMe, myCrush, mutualMatch) {
   var resultCard = document.getElementById('queryResultCard');
   var resultTitle = document.getElementById('queryResultTitle');
   var resultList = document.getElementById('queryResultList');
@@ -609,41 +671,69 @@ function checkStatus() {
   resultList.innerHTML = '';
   emptyState.style.display = 'none';
   matchedSection.style.display = 'none';
-  resultTitle.textContent = '查询中...';
+  resultTitle.textContent = myName + ' 的配对状态';
 
+  if (mutualMatch) {
+    matchedSection.style.display = 'block';
+    matchedSection.querySelector('p').textContent = '你和 ' + (mutualMatch.name2 || mutualMatch.crushName) + ' 已经配对成功！';
+  }
+
+  if (whoLikesMe.length === 0 && !mutualMatch) {
+    emptyState.style.display = 'block';
+  } else {
+    whoLikesMe.forEach(function(r) {
+      var li = document.createElement('li');
+      li.className = 'query-item';
+      var isMutual = myCrush && (myCrush.crushName === r.yourName);
+      li.innerHTML =
+        '<div class="avatar">' + (isMutual ? '💕' : '❤️') + '</div>' +
+        '<div class="info">' +
+          '<div class="name">' + escHtml(r.yourName) + ' ' + (isMutual ? '← 互相喜欢！' : '偷偷喜欢你') + '</div>' +
+          '<div class="time">' + formatTime(r.time) + '</div>' +
+        '</div>';
+      resultList.appendChild(li);
+    });
+  }
+}
+
+function checkStatus() {
+  var myName = document.getElementById('queryName').value.trim();
+  var err = document.getElementById('errQueryName');
+  err.classList.remove('show');
+
+  if (!myName) { err.textContent = '请输入你的名字'; err.classList.add('show'); return; }
+
+  // 先显示本地结果
+  var localResult = localCheck(myName);
+  if (localResult.whoLikesMe.length > 0 || localResult.myCrush) {
+    var localMatch = null;
+    if (localResult.myCrush) {
+      for (var i = 0; i < localResult.whoLikesMe.length; i++) {
+        if (localResult.whoLikesMe[i].yourName === localResult.myCrush.crushName) {
+          localMatch = { name2: localResult.myCrush.crushName };
+        }
+      }
+    }
+    renderCheckResult(myName, localResult.whoLikesMe, localResult.myCrush, localMatch);
+  } else {
+    document.getElementById('queryResultCard').style.display = 'block';
+    document.getElementById('queryResultList').innerHTML = '';
+    document.getElementById('queryEmpty').style.display = 'none';
+    document.getElementById('queryMatchedSection').style.display = 'none';
+    document.getElementById('queryResultTitle').textContent = '查询中...';
+  }
+
+  // 同时请求服务器数据
   apiGet('/check?name=' + encodeURIComponent(myName)).then(function(data) {
-    if (!data.ok) {
-      showToast(data.msg || '查询失败');
-      return;
-    }
-
-    resultTitle.textContent = myName + ' 的配对状态';
-
-    if (data.mutualMatch) {
-      matchedSection.style.display = 'block';
-      matchedSection.querySelector('p').textContent =
-        '你和 ' + data.mutualMatch.name2 + ' 已经配对成功！';
-    }
-
-    if (data.whoLikesMe.length === 0 && !data.mutualMatch) {
-      emptyState.style.display = 'block';
-    } else {
-      data.whoLikesMe.forEach(function(r) {
-        var li = document.createElement('li');
-        li.className = 'query-item';
-        var isMutual = data.myCrush && data.myCrush.crushName === r.yourName;
-        li.innerHTML =
-          '<div class="avatar">' + (isMutual ? '💕' : '❤️') + '</div>' +
-          '<div class="info">' +
-            '<div class="name">' + escHtml(r.yourName) + ' ' + (isMutual ? '← 互相喜欢！' : '偷偷喜欢你') + '</div>' +
-            '<div class="time">' + formatTime(r.time) + '</div>' +
-          '</div>';
-        resultList.appendChild(li);
-      });
+    if (data.ok) {
+      renderCheckResult(myName, data.whoLikesMe, data.myCrush, data.mutualMatch);
     }
   }).catch(function() {
-    showToast('网络错误，请重试');
-    resultCard.style.display = 'none';
+    // 服务器不可用，本地结果已显示
+    if (localResult.whoLikesMe.length === 0 && !localResult.myCrush) {
+      document.getElementById('queryEmpty').style.display = 'block';
+      document.getElementById('queryResultTitle').textContent = myName + ' 的配对状态（离线模式）';
+    }
   });
 }
 
@@ -673,15 +763,13 @@ function sharePage() {
 
 function resetAll() {
   if (confirm('确定要清除所有配对数据吗？此操作不可恢复！')) {
+    localStorage.removeItem(LS_KEY);
     apiDelete('/reset').then(function(data) {
-      if (data.ok) {
-        showToast('所有数据已清除');
-        document.getElementById('queryResultCard').style.display = 'none';
-        document.getElementById('queryName').value = '';
-      }
-    }).catch(function() {
-      showToast('清除失败，请重试');
-    });
+      if (data.ok) showToast('所有数据已清除');
+    }).catch(function() {});
+    showToast('本地数据已清除');
+    document.getElementById('queryResultCard').style.display = 'none';
+    document.getElementById('queryName').value = '';
   }
 }
 
