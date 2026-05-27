@@ -11,7 +11,7 @@ COPY admin.html ./
 
 RUN mkdir -p /app/data
 
-EXPOSE 3456
+EXPOSE 3457
 
 ENV API_KEY=love-match-2024
 

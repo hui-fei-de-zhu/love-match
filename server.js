@@ -3,9 +3,12 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
+const mongoose = require('mongoose');
+
 const app = express();
 const PORT = process.env.PORT || 3457;
 const API_KEY = process.env.API_KEY || 'love-match-2024';
+const MONGODB_URI = process.env.MONGODB_URI;
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'records.json');
 
@@ -13,6 +16,67 @@ const DATA_FILE = path.join(DATA_DIR, 'records.json');
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
+
+// ========== MongoDB Setup ==========
+const recordSchema = new mongoose.Schema({
+  recordId: { type: String, required: true, unique: true },
+  myName: { type: String, required: true },
+  crushName: { type: String, required: true },
+  timestamp: { type: Number, required: true },
+  matched: { type: Boolean, default: false },
+  matchId: { type: String, default: null }
+});
+
+let Record = null;
+let useMongo = false;
+
+async function connectMongo() {
+  if (!MONGODB_URI) return;
+  try {
+    await mongoose.connect(MONGODB_URI);
+    Record = mongoose.model('Record', recordSchema);
+    useMongo = true;
+    console.log('  MongoDB 已连接');
+  } catch (e) {
+    console.log('  MongoDB 连接失败，使用文件存储');
+    console.log('  ' + e.message);
+  }
+}
+
+// ========== Data Adapter ==========
+async function dbLoadAll() {
+  if (useMongo) {
+    const docs = await Record.find({});
+    return docs.map(doc => ({
+      id: doc.recordId,
+      myName: doc.myName,
+      crushName: doc.crushName,
+      timestamp: doc.timestamp,
+      matched: doc.matched,
+      matchId: doc.matchId
+    }));
+  }
+  return loadRecords();
+}
+
+async function dbSaveAll(records) {
+  if (useMongo) {
+    await Record.deleteMany({});
+    if (records.length > 0) {
+      const docs = records.map(r => ({
+        recordId: r.id,
+        myName: r.myName,
+        crushName: r.crushName,
+        timestamp: r.timestamp,
+        matched: r.matched,
+        matchId: r.matchId
+      }));
+      await Record.insertMany(docs);
+    }
+    return;
+  }
+  saveRecords(records);
+}
 
 // ========== Helpers ==========
 function ensureDataDir() {
@@ -58,8 +122,24 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, time: Date.now() });
 });
 
+// Get tunnel URL
+app.get('/api/tunnel-url', (req, res) => {
+  const tunnelFile = path.join(__dirname, 'tunnel', 'tunnel_url.txt');
+  try {
+    if (fs.existsSync(tunnelFile)) {
+      const url = fs.readFileSync(tunnelFile, 'utf-8').trim();
+      if (url) {
+        return res.json({ success: true, url });
+      }
+    }
+    res.json({ success: false, url: null });
+  } catch (e) {
+    res.json({ success: false, url: null });
+  }
+});
+
 // Register or update a crush
-app.post('/api/register', validateApiKey, (req, res) => {
+app.post('/api/register', validateApiKey, async (req, res) => {
   const { myName, crushName } = req.body;
 
   if (!myName || !crushName) {
@@ -79,7 +159,7 @@ app.post('/api/register', validateApiKey, (req, res) => {
     return res.status(400).json({ success: false, error: '不能填写自己的名字' });
   }
 
-  const records = loadRecords();
+  const records = await dbLoadAll();
 
   // Find if crush has registered and chosen me (unmatched)
   const crushRecord = records.find(r =>
@@ -147,7 +227,7 @@ app.post('/api/register', validateApiKey, (req, res) => {
     }
   }
 
-  saveRecords(records);
+  await dbSaveAll(records);
 
   res.json({
     success: true,
@@ -158,7 +238,7 @@ app.post('/api/register', validateApiKey, (req, res) => {
 });
 
 // Query match status
-app.get('/api/query', validateApiKey, (req, res) => {
+app.get('/api/query', validateApiKey, async (req, res) => {
   const { name1, name2 } = req.query;
 
   if (!name1 || !name2) {
@@ -172,7 +252,7 @@ app.get('/api/query', validateApiKey, (req, res) => {
     return res.status(400).json({ success: false, error: '不能查询自己和自己' });
   }
 
-  const records = loadRecords();
+  const records = await dbLoadAll();
 
   const r1 = records.find(r =>
     normalize(r.myName) === key1 && normalize(r.crushName) === key2
@@ -214,8 +294,8 @@ app.get('/api/query', validateApiKey, (req, res) => {
 });
 
 // Get stats
-app.get('/api/stats', validateApiKey, (req, res) => {
-  const records = loadRecords();
+app.get('/api/stats', validateApiKey, async (req, res) => {
+  const records = await dbLoadAll();
   const uniqueNames = new Set(records.map(r => normalize(r.myName)));
   const matchedPairs = Math.floor(records.filter(r => r.matched).length / 2);
 
@@ -228,20 +308,20 @@ app.get('/api/stats', validateApiKey, (req, res) => {
 });
 
 // Get all records (admin)
-app.get('/api/admin/records', validateApiKey, (req, res) => {
-  const records = loadRecords();
+app.get('/api/admin/records', validateApiKey, async (req, res) => {
+  const records = await dbLoadAll();
   res.json({ success: true, records, total: records.length });
 });
 
 // Clear all data (admin)
-app.post('/api/admin/clear', validateApiKey, (req, res) => {
-  saveRecords([]);
+app.post('/api/admin/clear', validateApiKey, async (req, res) => {
+  await dbSaveAll([]);
   res.json({ success: true, message: '所有数据已清除' });
 });
 
 // Delete a specific record (admin)
-app.delete('/api/admin/record/:id', validateApiKey, (req, res) => {
-  const records = loadRecords();
+app.delete('/api/admin/record/:id', validateApiKey, async (req, res) => {
+  const records = await dbLoadAll();
   const idx = records.findIndex(r => r.id === req.params.id);
   if (idx >= 0) {
     const record = records[idx];
@@ -254,7 +334,7 @@ app.delete('/api/admin/record/:id', validateApiKey, (req, res) => {
       }
     }
     records.splice(idx, 1);
-    saveRecords(records);
+    await dbSaveAll(records);
     res.json({ success: true, message: '记录已删除' });
   } else {
     res.status(404).json({ success: false, error: '记录不存在' });
@@ -262,13 +342,19 @@ app.delete('/api/admin/record/:id', validateApiKey, (req, res) => {
 });
 
 // ========== Start Server ==========
-app.listen(PORT, () => {
-  ensureDataDir();
-  console.log('');
-  console.log('  💕  心动配对服务器已启动');
-  console.log('  ─────────────────────────');
-  console.log('  地址: http://localhost:' + PORT);
-  console.log('  密钥: ' + API_KEY);
-  console.log('  数据: ' + DATA_FILE);
-  console.log('');
-});
+async function start() {
+  await connectMongo();
+
+  app.listen(PORT, () => {
+    if (!useMongo) ensureDataDir();
+    console.log('');
+    console.log('  💕  心动配对服务器已启动');
+    console.log('  ─────────────────────────');
+    console.log('  地址: http://localhost:' + PORT);
+    console.log('  密钥: ' + API_KEY);
+    console.log('  存储: ' + (useMongo ? 'MongoDB 云数据库' : '本地文件'));
+    console.log('');
+  });
+}
+
+start();

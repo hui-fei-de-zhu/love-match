@@ -8,3 +8,5 @@ services:
     envVars:
       - key: API_KEY
         value: love-match-2024
+      - key: MONGODB_URI
+        sync: false
