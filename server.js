@@ -3,7 +3,12 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
-const mongoose = require('mongoose');
+let mongoose = null;
+try {
+  mongoose = require('mongoose');
+} catch (e) {
+  // mongoose 未安装，使用文件存储模式
+}
 
 const app = express();
 const PORT = process.env.PORT || 3457;
@@ -18,23 +23,21 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // ========== MongoDB Setup ==========
-const recordSchema = new mongoose.Schema({
-  recordId: { type: String, required: true, unique: true },
-  myName: { type: String, required: true },
-  crushName: { type: String, required: true },
-  timestamp: { type: Number, required: true },
-  matched: { type: Boolean, default: false },
-  matchId: { type: String, default: null }
-});
-
 let Record = null;
 let useMongo = false;
 
 async function connectMongo() {
-  if (!MONGODB_URI) return;
+  if (!mongoose || !MONGODB_URI) return;
   try {
     await mongoose.connect(MONGODB_URI);
-    Record = mongoose.model('Record', recordSchema);
+    Record = mongoose.model('Record', new mongoose.Schema({
+      recordId: { type: String, required: true, unique: true },
+      myName: { type: String, required: true },
+      crushName: { type: String, required: true },
+      timestamp: { type: Number, required: true },
+      matched: { type: Boolean, default: false },
+      matchId: { type: String, default: null }
+    }));
     useMongo = true;
     console.log('  MongoDB 已连接');
   } catch (e) {
